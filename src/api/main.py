@@ -75,11 +75,10 @@ async def lifespan(app: FastAPI):
         # -------------------------
         state["model"] = DistilBertForSequenceClassification.from_pretrained(
             repo_id,
-            torch_dtype=torch.float16
         )
         state["model"].to(state["device"])
         state["model"].eval()
-        print("✅ Model loaded (half precision)")
+        print("✅ Model loaded (float 32)")
 
         # -------------------------
         # Load label encoder
@@ -174,11 +173,11 @@ def predict(request: PredictionRequest):
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
     # Inference
+    # Inference
     with torch.no_grad():
-        outputs = model(**inputs).to(torch.float32)
-        probs = torch.nn.functional.softmax(
-            outputs.logits, dim=-1
-        ).cpu().numpy()[0]
+        outputs = model(**inputs)
+        logits = outputs.logits
+        probs = torch.nn.functional.softmax(logits, dim=-1).cpu().numpy()[0]
 
     # Decode label
     class_names = label_encoder.classes_
