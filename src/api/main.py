@@ -18,47 +18,35 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Modern replacement for @app.on_event('startup')"""
-    # --- STARTUP LOGIC ---
     print("🚀 Application is starting up...")
     
-    # Initialize Gemini
-    state["gemini_client"] = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    # Get tokens from environment variables
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    hf_token = os.getenv("HF_TOKEN") # Add this in Koyeb!
     
-    # Device setup
+    state["gemini_client"] = genai.Client(api_key=gemini_key)
     state["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    repo_id = "noor9292/mental-health-distilbert"
+    # MUST be the full username/repo-name
+    repo_id = "noor9292/mental-health-distilbert" 
+
     try:
-        # 1. Load Model & Tokenizer
-        state["tokenizer"] = DistilBertTokenizer.from_pretrained(repo_id)
-        state["model"] = DistilBertForSequenceClassification.from_pretrained(repo_id)
+        # Pass the token to the from_pretrained methods
+        state["tokenizer"] = DistilBertTokenizer.from_pretrained(repo_id, token=hf_token)
+        state["model"] = DistilBertForSequenceClassification.from_pretrained(repo_id, token=hf_token)
         state["model"].to(state["device"])
         state["model"].eval()
-        print("✅ DistilBERT Model and Tokenizer loaded.")
-
-        # 2. Load Label Encoder
+        
+        # Also pass the token to hf_hub_download
         from huggingface_hub import hf_hub_download
-        try:
-            path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib")
-            state["label_encoder"] = joblib.load(path)
-            print("✅ Label Encoder loaded from Hub.")
-        except Exception as e:
-            print(f"⚠️ Warning: Using fallback label classes ({e}).")
-            from sklearn.preprocessing import LabelEncoder
-            le = LabelEncoder()
-            le.classes_ = np.array(['non-suicide', 'suicide'])
-            state["label_encoder"] = le
-
-        print("✅ Startup sequence finished successfully!")
+        path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib", token=hf_token)
+        state["label_encoder"] = joblib.load(path)
+        
+        print("✅ All artifacts loaded with authentication!")
     except Exception as e:
         print(f"❌ CRITICAL STARTUP ERROR: {str(e)}")
         raise e
-
-    yield  # The app stays here while running requests
-
-    # --- SHUTDOWN LOGIC ---
-    print("🛑 Application is shutting down...")
+    yield
     state.clear()
 
 app = FastAPI(
