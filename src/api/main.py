@@ -75,13 +75,12 @@ async def lifespan(app: FastAPI):
         # -------------------------
         state["model"] = DistilBertForSequenceClassification.from_pretrained(
             repo_id,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True
+            torch_dtype=torch.float16
         )
         state["model"] = state["model"].half()
         state["model"].to(state["device"])
         state["model"].eval()
-        print("✅ Model loaded")
+        print("✅ Model loaded (half precision)")
 
         # -------------------------
         # Load label encoder
