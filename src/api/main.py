@@ -73,12 +73,12 @@ async def lifespan(app: FastAPI):
         # -------------------------
         # Load model
         # -------------------------
-        state["model"] = DistilBertForSequenceClassification.from_pretrained(
-            repo_id,
-        )
-        state["model"].to(state["device"])
-        state["model"].eval()
-        print("✅ Model loaded (float 32)")
+        #state["model"] = DistilBertForSequenceClassification.from_pretrained(
+        #    repo_id,
+        #)
+        #state["model"].to(state["device"])
+        #state["model"].eval()
+        #print("✅ Model loaded (float 32)")
 
         # -------------------------
         # Load label encoder
@@ -158,11 +158,26 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
     tokenizer = state["tokenizer"]
-    model = state["model"]
     device = state["device"]
     label_encoder = state["label_encoder"]
 
+    # -----------------------------
+    # Lazy-load model on first call
+    # -----------------------------
+    if "model" not in state:
+        print("🚀 Lazy-loading model...")
+        state["model"] = DistilBertForSequenceClassification.from_pretrained(
+            "noor9292/mental-health-distilbert"
+        )
+        state["model"].to(device)
+        state["model"].eval()
+        print("✅ Model loaded lazily")
+
+    model = state["model"]
+
+    # -----------------------------
     # Tokenize input
+    # -----------------------------
     inputs = tokenizer(
         request.text,
         return_tensors="pt",
@@ -172,20 +187,27 @@ def predict(request: PredictionRequest):
     )
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    # Inference
-    # Inference
+    # -----------------------------
+    # Inference (CPU-safe float32)
+    # -----------------------------
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
-        probs = torch.nn.functional.softmax(logits, dim=-1).cpu().numpy()[0]
+        probs = torch.nn.functional.softmax(
+            logits, dim=-1
+        ).cpu().numpy()[0]
 
+    # -----------------------------
     # Decode label
+    # -----------------------------
     class_names = label_encoder.classes_
     idx = int(np.argmax(probs))
     final_label = class_names[idx]
     confidence = float(probs[idx])
 
+    # -----------------------------
     # Risk scoring
+    # -----------------------------
     if final_label == "High":
         score = 70 + (confidence * 30)
         priority = "Critical"
@@ -196,6 +218,9 @@ def predict(request: PredictionRequest):
         score = confidence * 39
         priority = "Low"
 
+    # -----------------------------
+    # AI explanation
+    # -----------------------------
     explanation = generate_empathetic_explanation(
         request.text, final_label
     )
@@ -206,3 +231,4 @@ def predict(request: PredictionRequest):
         "priority": priority,
         "explanation": explanation
     }
+
