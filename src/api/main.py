@@ -77,7 +77,6 @@ async def lifespan(app: FastAPI):
             repo_id,
             torch_dtype=torch.float16
         )
-        state["model"] = state["model"].half()
         state["model"].to(state["device"])
         state["model"].eval()
         print("✅ Model loaded (half precision)")
@@ -176,7 +175,7 @@ def predict(request: PredictionRequest):
 
     # Inference
     with torch.no_grad():
-        outputs = model(**inputs)
+        outputs = model(**inputs).to(torch.float32)
         probs = torch.nn.functional.softmax(
             outputs.logits, dim=-1
         ).cpu().numpy()[0]
