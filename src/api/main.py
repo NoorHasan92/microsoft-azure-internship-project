@@ -10,6 +10,8 @@ from src.api.schemas import PredictionRequest, PredictionResponse
 from dotenv import load_dotenv
 from google import genai
 
+torch.set_grad_enabled(False)
+
 # Load environment variables
 load_dotenv()
 
@@ -167,7 +169,9 @@ def predict(request: PredictionRequest):
     if "model" not in state:
         print("🚀 Lazy-loading model...")
         state["model"] = DistilBertForSequenceClassification.from_pretrained(
-            "noor9292/mental-health-distilbert"
+            "noor9292/mental-health-distilbert",
+            torch_dtype=torch.float32,
+            low_cpu_mem_usage=True
         )
         state["model"].to(device)
         state["model"].eval()
