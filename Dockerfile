@@ -1,20 +1,27 @@
-# 1. Start with a computer that already has Python 3.10 installed
+# 1. Use Python 3.10
 FROM python:3.10-slim
 
-# 2. Create a folder inside that computer called /app
+# 2. Install Git and required system dependencies for Xet
+RUN apt-get update && apt-get install -y \
+    git \
+    git-lfs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 3. Set directory
 WORKDIR /app
 
-# 3. Copy your requirements list from your laptop into that /app folder
+# 4. Install Python dependencies
+# Adding 'hf-xet' to ensure the Xet files can be resolved
 COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir "huggingface_hub[hf_xet]"
 
-# 4. Run the command to install all your libraries (torch, fastapi, etc.)
-RUN pip install --no-cache-dir -r requirements.txt
-
-# 5. Copy ALL your code (src folder, ui folder, etc.) into the /app folder
+# 5. Copy code
 COPY . .
 
-# 6. Hugging Face Spaces specifically listens to port 7860
+# 6. Expose port
 EXPOSE 7860
 
-# 7. The "Start Button": This runs your server exactly like you did locally
+# 7. Start
 CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
