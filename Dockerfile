@@ -1,27 +1,24 @@
-# 1. Use Python 3.10
 FROM python:3.10-slim
 
-# 2. Install Git and required system dependencies for Xet
-RUN apt-get update && apt-get install -y \
-    git \
-    git-lfs \
-    && rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV PORT=8080
 
-# 3. Set directory
 WORKDIR /app
 
-# 4. Install Python dependencies
-# Adding 'hf-xet' to ensure the Xet files can be resolved
+# Install system dependencies
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir "huggingface_hub[hf_xet]"
+    pip install --no-cache-dir -r requirements.txt
 
-# 5. Copy code
+# Copy application code
 COPY . .
 
-# 6. Expose port
-EXPOSE 7860
+# Koyeb uses port 8080 by default for web services
+EXPOSE 8080
 
-# 7. Start
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run the app (Notice the port change to 8080)
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
