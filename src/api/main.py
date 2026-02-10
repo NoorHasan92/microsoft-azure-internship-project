@@ -16,6 +16,28 @@ load_dotenv()
 # Global state
 state = {}
 
+import threading
+model_lock = threading.Lock()
+
+def warm_up_model():
+    with model_lock:
+        if "model" in state:
+            return  # already loaded
+
+        try:
+            print("🔥 Background model warm-up started...")
+            model = DistilBertForSequenceClassification.from_pretrained(
+                "noor9292/mental-health-distilbert"
+            )
+            model.to(state["device"])
+            model.eval()
+            state["model"] = model
+            print("✅ Model warmed up in background")
+        except Exception as e:
+            print(f"⚠️ Background warm-up failed: {e}")
+
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from huggingface_hub import login, hf_hub_download
@@ -97,6 +119,10 @@ async def lifespan(app: FastAPI):
         print(f"❌ Startup Error: {e}")
         raise e
 
+    # Start background warm-up (non-blocking)
+    threading.Thread(target=warm_up_model, daemon=True).start()
+
+
     yield
     state.clear()
 
@@ -164,14 +190,15 @@ def predict(request: PredictionRequest):
     # -----------------------------
     # Lazy-load model on first call
     # -----------------------------
-    if "model" not in state:
-        print("🚀 Lazy-loading model...")
-        state["model"] = DistilBertForSequenceClassification.from_pretrained(
-            "noor9292/mental-health-distilbert"
-        )
-        state["model"].to(device)
-        state["model"].eval()
-        print("✅ Model loaded lazily")
+    with model_lock:
+        if "model" not in state:
+            print("🚀 Lazy-loading model...")
+            state["model"] = DistilBertForSequenceClassification.from_pretrained(
+                "noor9292/mental-health-distilbert"
+            )
+            state["model"].to(device)
+            state["model"].eval()
+            print("✅ Model loaded lazily")
 
     model = state["model"]
 
