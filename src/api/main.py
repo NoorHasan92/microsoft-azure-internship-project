@@ -17,7 +17,7 @@ load_dotenv()
 
 state = {}
 
-HF_MODEL_URL = "https://api-inference.huggingface.co/models/noor9292/mental-health-distilbert"
+HF_MODEL_URL = "https://router.huggingface.co/models/noor9292/mental-health-distilbert"
 
 # --------------------------------------------------
 # Lifespan (startup / shutdown)
