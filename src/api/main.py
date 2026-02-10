@@ -1,55 +1,33 @@
 import os
-import torch
-import joblib
-import numpy as np
+import requests
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import AutoTokenizer, DistilBertForSequenceClassification
-from src.api.schemas import PredictionRequest, PredictionResponse
 from dotenv import load_dotenv
 from google import genai
 
-torch.set_grad_enabled(False)
+from src.api.schemas import PredictionRequest, PredictionResponse
 
-# Load environment variables
+# --------------------------------------------------
+# Environment & global state
+# --------------------------------------------------
+
 load_dotenv()
 
-# Global state
 state = {}
+
+HF_MODEL_URL = "https://api-inference.huggingface.co/models/noor9292/mental-health-distilbert"
+
+# --------------------------------------------------
+# Lifespan (startup / shutdown)
+# --------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    from huggingface_hub import login, hf_hub_download
+    print("🚀 Application starting (HF Inference API mode)")
 
-    print("🚀 Application is starting up...")
-
-    # -------------------------
-    # Hugging Face setup
-    # -------------------------
-    hf_token = os.getenv("HF_TOKEN")
-
-    if hf_token:
-        try:
-            login(token=hf_token)
-            print("✅ Hugging Face authenticated")
-        except Exception as e:
-            print(f"⚠️ Hugging Face login failed: {e}")
-    else:
-        print("ℹ️ Hugging Face public access (no token)")
-
-    repo_id = "noor9292/mental-health-distilbert"
-
-    # -------------------------
-    # Device setup
-    # -------------------------
-    state["device"] = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
-    )
-
-    # -------------------------
-    # Gemini setup (SAFE)
-    # -------------------------
+    # Gemini (optional)
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
@@ -62,52 +40,19 @@ async def lifespan(app: FastAPI):
         print("ℹ️ GEMINI_API_KEY not found, using fallback responses")
         state["gemini_client"] = None
 
-    try:
-        # -------------------------
-        # Load tokenizer (CRITICAL FIX)
-        # -------------------------
-        state["tokenizer"] = AutoTokenizer.from_pretrained(
-            repo_id,
-            use_fast=True
-        )
-        print("✅ Tokenizer loaded")
-
-        # -------------------------
-        # Load model
-        # -------------------------
-        #state["model"] = DistilBertForSequenceClassification.from_pretrained(
-        #    repo_id,
-        #)
-        #state["model"].to(state["device"])
-        #state["model"].eval()
-        #print("✅ Model loaded (float 32)")
-
-        # -------------------------
-        # Load label encoder
-        # -------------------------
-        label_path = hf_hub_download(
-            repo_id=repo_id,
-            filename="label_encoder_bert.joblib",
-            token=hf_token
-        )
-        state["label_encoder"] = joblib.load(label_path)
-        print("✅ Label encoder loaded")
-
-        print("✅ Model, tokenizer, and label encoder ready")
-
-    except Exception as e:
-        print(f"❌ Startup Error: {e}")
-        raise e
-
     yield
     state.clear()
 
 
+# --------------------------------------------------
+# FastAPI app
+# --------------------------------------------------
+
 app = FastAPI(
     title="Mental Health Risk Detection API",
-    description="Fine-tuned DistilBERT with optional Gemini-powered empathetic responses",
-    version="4.2.0",
-    lifespan=lifespan
+    description="DistilBERT via Hugging Face Inference API + Gemini explanations",
+    version="5.0.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -118,10 +63,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --------------------------------------------------
+# Health check
+# --------------------------------------------------
+
 @app.get("/")
 def health_check():
-    return {"status": "ok", "model": "DistilBERT (PyTorch)"}
+    return {
+        "status": "ok",
+        "mode": "hf-inference-api"
+    }
 
+# --------------------------------------------------
+# Gemini explanation helper
+# --------------------------------------------------
 
 def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
     client = state.get("gemini_client")
@@ -153,51 +108,49 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
         )
         return response.text.replace("**", "").strip()
     except Exception as e:
-        print(f"⚠️ Gemini generation error: {e}")
+        print(f"⚠️ Gemini error: {e}")
         return fallback
 
+# --------------------------------------------------
+# Prediction endpoint (HF Inference API)
+# --------------------------------------------------
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
-    tokenizer = state["tokenizer"]
-    device = state["device"]
-    label_encoder = state["label_encoder"]
-    print("DEBUG: loading model with NO extra flags")
+    hf_token = os.getenv("HF_API_TOKEN")
+    if not hf_token:
+        raise RuntimeError("HF_API_TOKEN not set")
 
-    # Load model once (CPU-safe)
-    if "model" not in state:
-        print("🚀 Loading model (CPU float32)...")
-        model = DistilBertForSequenceClassification.from_pretrained(
-            "noor9292/mental-health-distilbert"
-        )
-        model.to(device)
-        model.eval()
-        state["model"] = model
-        print("✅ Model loaded")
+    headers = {
+        "Authorization": f"Bearer {hf_token}",
+        "Content-Type": "application/json",
+    }
 
-    model = state["model"]
+    payload = {
+        "inputs": request.text
+    }
 
-    # Tokenize
-    inputs = tokenizer(
-        request.text,
-        return_tensors="pt",
-        truncation=True,
-        max_length=128,
-        padding=True
+    response = requests.post(
+        HF_MODEL_URL,
+        headers=headers,
+        json=payload,
+        timeout=30,
     )
-    inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    # Inference
-    with torch.no_grad():
-        outputs = model(**inputs)
-        logits = outputs.logits
-        probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
+    if response.status_code != 200:
+        raise RuntimeError(f"Hugging Face API error: {response.text}")
 
-    # Decode
-    class_names = label_encoder.classes_
-    idx = int(np.argmax(probs))
-    final_label = class_names[idx]
-    confidence = float(probs[idx])
+    result = response.json()
+    # Expected format:
+    # [
+    #   {"label": "High", "score": 0.93},
+    #   {"label": "Moderate", "score": 0.05},
+    #   {"label": "Low", "score": 0.02}
+    # ]
+
+    top = max(result, key=lambda x: x["score"])
+    final_label = top["label"]
+    confidence = float(top["score"])
 
     if final_label == "High":
         score = 70 + (confidence * 30)
@@ -217,5 +170,5 @@ def predict(request: PredictionRequest):
         "risk_label": final_label,
         "risk_score": round(score, 2),
         "priority": priority,
-        "explanation": explanation
+        "explanation": explanation,
     }
