@@ -5,7 +5,7 @@ import numpy as np
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+from transformers import AutoTokenizer, DistilBertForSequenceClassification
 from src.api.schemas import PredictionRequest, PredictionResponse
 from dotenv import load_dotenv
 from google import genai
@@ -18,16 +18,36 @@ state = {}
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from huggingface_hub import login, hf_hub_download
+
     print("🚀 Application is starting up...")
 
-    # Device setup
-    state["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # -------------------------
+    # Hugging Face setup
+    # -------------------------
+    hf_token = os.getenv("HF_TOKEN")
 
-    # Hugging Face model repo
-    hf_token = os.getenv("HF_TOKEN", None)
+    if hf_token:
+        try:
+            login(token=hf_token)
+            print("✅ Hugging Face authenticated")
+        except Exception as e:
+            print(f"⚠️ Hugging Face login failed: {e}")
+    else:
+        print("ℹ️ Hugging Face public access (no token)")
+
     repo_id = "noor9292/mental-health-distilbert"
 
+    # -------------------------
+    # Device setup
+    # -------------------------
+    state["device"] = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu"
+    )
+
+    # -------------------------
     # Gemini setup (SAFE)
+    # -------------------------
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
@@ -41,28 +61,37 @@ async def lifespan(app: FastAPI):
         state["gemini_client"] = None
 
     try:
-        # Load tokenizer
-        state["tokenizer"] = DistilBertTokenizer.from_pretrained(
-            repo_id, token=hf_token
+        # -------------------------
+        # Load tokenizer (CRITICAL FIX)
+        # -------------------------
+        state["tokenizer"] = AutoTokenizer.from_pretrained(
+            repo_id,
+            use_fast=True
         )
+        print("✅ Tokenizer loaded")
 
+        # -------------------------
         # Load model
+        # -------------------------
         state["model"] = DistilBertForSequenceClassification.from_pretrained(
-            repo_id, token=hf_token
+            repo_id
         )
         state["model"].to(state["device"])
         state["model"].eval()
+        print("✅ Model loaded")
 
+        # -------------------------
         # Load label encoder
-        from huggingface_hub import hf_hub_download
+        # -------------------------
         label_path = hf_hub_download(
             repo_id=repo_id,
             filename="label_encoder_bert.joblib",
             token=hf_token
         )
         state["label_encoder"] = joblib.load(label_path)
+        print("✅ Label encoder loaded")
 
-        print("✅ Model, tokenizer, and label encoder loaded")
+        print("✅ Model, tokenizer, and label encoder ready")
 
     except Exception as e:
         print(f"❌ Startup Error: {e}")
@@ -75,7 +104,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Mental Health Risk Detection API",
     description="Fine-tuned DistilBERT with optional Gemini-powered empathetic responses",
-    version="4.1.0",
+    version="4.2.0",
     lifespan=lifespan
 )
 
@@ -95,7 +124,6 @@ def health_check():
 def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
     client = state.get("gemini_client")
 
-    # Fallback (always safe)
     fallback = (
         "I hear you. You're not alone, and reaching out is a strong first step. "
         "If things feel overwhelming, consider talking to someone you trust or a professional."
@@ -147,9 +175,11 @@ def predict(request: PredictionRequest):
     # Inference
     with torch.no_grad():
         outputs = model(**inputs)
-        probs = torch.nn.functional.softmax(outputs.logits, dim=-1).cpu().numpy()[0]
+        probs = torch.nn.functional.softmax(
+            outputs.logits, dim=-1
+        ).cpu().numpy()[0]
 
-    # Label decoding
+    # Decode label
     class_names = label_encoder.classes_
     idx = int(np.argmax(probs))
     final_label = class_names[idx]
@@ -166,7 +196,9 @@ def predict(request: PredictionRequest):
         score = confidence * 39
         priority = "Low"
 
-    explanation = generate_empathetic_explanation(request.text, final_label)
+    explanation = generate_empathetic_explanation(
+        request.text, final_label
+    )
 
     return {
         "risk_label": final_label,
