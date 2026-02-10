@@ -43,25 +43,37 @@ label_encoder = None
 @app.on_event("startup")
 def load_artifacts():
     global model, tokenizer, label_encoder
-
-    repo_id = "noor9292/mental-health-distilbert" 
-    print(f"🚀 Loading DistilBERT from Hugging Face: {repo_id}...")
+    
+    repo_id = "noor9292/mental-health-distilbert"
+    print(f"🚀 Loading DistilBERT from: {repo_id}...")
 
     try:
-        # 1. Load from Hugging Face Hub
+        # 1. Load Model & Tokenizer
         tokenizer = DistilBertTokenizer.from_pretrained(repo_id)
         model = DistilBertForSequenceClassification.from_pretrained(repo_id)
         model.to(device)
         model.eval()
 
-        # 2. Load the Label Encoder file from the same repo
-        from huggingface_hub import hf_hub_download
-        label_file_path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib")
-        label_encoder = joblib.load(label_file_path)
+        # 2. Load Label Encoder (The part that caused the error)
+        try:
+            from huggingface_hub import hf_hub_download
+            # IMPORTANT: Ensure "label_encoder_bert.joblib" is the EXACT name on HF
+            label_file_path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib")
+            
+            if label_file_path:
+                label_encoder = joblib.load(label_file_path)
+                print("✅ Label Encoder loaded!")
+            else:
+                raise FileNotFoundError("hf_hub_download returned None")
+                
+        except Exception as e:
+            print(f"⚠️ Warning: Could not load label encoder ({e}). Using manual mapping.")
+            # Manual fallback so the app doesn't crash
+            label_encoder = None 
 
-        print("✅ DistilBERT Loaded Successfully from the Hub!")
+        print("✅ Startup Complete!")
     except Exception as e:
-        print(f"❌ Error loading: {e}")
+        print(f"❌ CRITICAL ERROR: {e}")
         raise e
 
 
