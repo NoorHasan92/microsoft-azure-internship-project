@@ -1,0 +1,48 @@
+<!-- ui/index.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Mental Health Risk Checker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div class="card">
+        <h2>Mental Health Risk Checker</h2>
+        <p>Paste text below to assess Emotional Distress Risk.</p>
+
+        <textarea placeholder="Type or paste text here..."></textarea>
+
+        <button onclick="analyzeText()">Analyze</button>
+
+        <div class="result" id="resultBox"></div>
+
+        <div class="disclaimer">
+            ⚠️ This tool is for educational purposes only.
+            It does not provide medical advice or diagnosis.
+        </div>
+    </div>
+
+    <div id="aiResponseContainer" class="full-width-insight">
+        <div class="ai-content-wrapper">
+            <div class="ai-header">
+                <span class="sparkle-icon">✨</span> 
+                <h3>Guidance</h3>
+            </div>
+            <div id="aiTextBody" class="ai-typing-text"></div>
+            <div class="ai-footer">
+                <p>This insight is AI-generated based on your current input. Take what resonates with you.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Link external JavaScript -->
+    <script src="script.js"></script>
+
+</body>
+
+</html>
