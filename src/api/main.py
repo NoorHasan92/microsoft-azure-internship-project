@@ -21,36 +21,37 @@ async def lifespan(app: FastAPI):
     print("🚀 Application is starting up...")
     
     hf_token = os.getenv("HF_TOKEN")
+    # Make sure this matches your Model repo name exactly
     repo_id = "noor9292/mental-health-distilbert" 
 
     try:
-        # 1. Load Tokenizer (MUST include repo_type="space")
+        # 1. Load Tokenizer
         state["tokenizer"] = DistilBertTokenizer.from_pretrained(
             repo_id, 
-            token=hf_token, 
-            repo_type="space"
+            token=hf_token
+            # Removed repo_type="space" because it's a Model repo
         )
         
-        # 2. Load Model (MUST include repo_type="space")
+        # 2. Load Model
         state["model"] = DistilBertForSequenceClassification.from_pretrained(
             repo_id, 
-            token=hf_token, 
-            repo_type="space"
+            token=hf_token
+            # Removed repo_type="space"
         )
         state["model"].to(state["device"])
         state["model"].eval()
         
-        # 3. Load Label Encoder (MUST include repo_type="space")
+        # 3. Load Label Encoder
         from huggingface_hub import hf_hub_download
         path = hf_hub_download(
             repo_id=repo_id, 
             filename="label_encoder_bert.joblib", 
-            token=hf_token,
-            repo_type="space"
+            token=hf_token
+            # Removed repo_type="space"
         )
         state["label_encoder"] = joblib.load(path)
         
-        print("✅ Success! Artifacts loaded from Space repository.")
+        print("✅ Success! Artifacts loaded from Model repository.")
     except Exception as e:
         print(f"❌ Startup Error: {e}")
         raise e
