@@ -162,26 +162,22 @@ def predict(request: PredictionRequest):
     tokenizer = state["tokenizer"]
     device = state["device"]
     label_encoder = state["label_encoder"]
+    print("DEBUG: loading model with NO extra flags")
 
-    # -----------------------------
-    # Lazy-load model on first call
-    # -----------------------------
+    # Load model once (CPU-safe)
     if "model" not in state:
-        print("🚀 Lazy-loading model...")
-        state["model"] = DistilBertForSequenceClassification.from_pretrained(
-            "noor9292/mental-health-distilbert",
-            torch_dtype=torch.float32,
-            low_cpu_mem_usage=True
+        print("🚀 Loading model (CPU float32)...")
+        model = DistilBertForSequenceClassification.from_pretrained(
+            "noor9292/mental-health-distilbert"
         )
-        state["model"].to(device)
-        state["model"].eval()
-        print("✅ Model loaded lazily")
+        model.to(device)
+        model.eval()
+        state["model"] = model
+        print("✅ Model loaded")
 
     model = state["model"]
 
-    # -----------------------------
-    # Tokenize input
-    # -----------------------------
+    # Tokenize
     inputs = tokenizer(
         request.text,
         return_tensors="pt",
@@ -191,27 +187,18 @@ def predict(request: PredictionRequest):
     )
     inputs = {k: v.to(device) for k, v in inputs.items()}
 
-    # -----------------------------
-    # Inference (CPU-safe float32)
-    # -----------------------------
+    # Inference
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
-        probs = torch.nn.functional.softmax(
-            logits, dim=-1
-        ).cpu().numpy()[0]
+        probs = torch.softmax(logits, dim=-1).cpu().numpy()[0]
 
-    # -----------------------------
-    # Decode label
-    # -----------------------------
+    # Decode
     class_names = label_encoder.classes_
     idx = int(np.argmax(probs))
     final_label = class_names[idx]
     confidence = float(probs[idx])
 
-    # -----------------------------
-    # Risk scoring
-    # -----------------------------
     if final_label == "High":
         score = 70 + (confidence * 30)
         priority = "Critical"
@@ -222,9 +209,6 @@ def predict(request: PredictionRequest):
         score = confidence * 39
         priority = "Low"
 
-    # -----------------------------
-    # AI explanation
-    # -----------------------------
     explanation = generate_empathetic_explanation(
         request.text, final_label
     )
@@ -235,4 +219,3 @@ def predict(request: PredictionRequest):
         "priority": priority,
         "explanation": explanation
     }
-
