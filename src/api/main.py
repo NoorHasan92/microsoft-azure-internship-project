@@ -20,31 +20,39 @@ state = {}
 async def lifespan(app: FastAPI):
     print("🚀 Application is starting up...")
     
-    # Get tokens from environment variables
-    gemini_key = os.getenv("GEMINI_API_KEY")
-    hf_token = os.getenv("HF_TOKEN") # Add this in Koyeb!
-    
-    state["gemini_client"] = genai.Client(api_key=gemini_key)
-    state["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # MUST be the full username/repo-name
+    hf_token = os.getenv("HF_TOKEN")
     repo_id = "noor9292/mental-health-distilbert" 
 
     try:
-        # Pass the token to the from_pretrained methods
-        state["tokenizer"] = DistilBertTokenizer.from_pretrained(repo_id, token=hf_token)
-        state["model"] = DistilBertForSequenceClassification.from_pretrained(repo_id, token=hf_token)
+        # 1. Load Tokenizer (MUST include repo_type="space")
+        state["tokenizer"] = DistilBertTokenizer.from_pretrained(
+            repo_id, 
+            token=hf_token, 
+            repo_type="space"
+        )
+        
+        # 2. Load Model (MUST include repo_type="space")
+        state["model"] = DistilBertForSequenceClassification.from_pretrained(
+            repo_id, 
+            token=hf_token, 
+            repo_type="space"
+        )
         state["model"].to(state["device"])
         state["model"].eval()
         
-        # Also pass the token to hf_hub_download
+        # 3. Load Label Encoder (MUST include repo_type="space")
         from huggingface_hub import hf_hub_download
-        path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib", token=hf_token)
+        path = hf_hub_download(
+            repo_id=repo_id, 
+            filename="label_encoder_bert.joblib", 
+            token=hf_token,
+            repo_type="space"
+        )
         state["label_encoder"] = joblib.load(path)
         
-        print("✅ All artifacts loaded with authentication!")
+        print("✅ Success! Artifacts loaded from Space repository.")
     except Exception as e:
-        print(f"❌ CRITICAL STARTUP ERROR: {str(e)}")
+        print(f"❌ Startup Error: {e}")
         raise e
     yield
     state.clear()
