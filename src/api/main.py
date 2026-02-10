@@ -1,14 +1,11 @@
-# src/api/main.py (DistilBERT Edition)
 import os
 import torch
 import joblib
 import numpy as np
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from transformers import (
-    DistilBertTokenizer,
-    DistilBertForSequenceClassification
-)
+from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 from src.api.schemas import PredictionRequest, PredictionResponse
 from dotenv import load_dotenv
 from google import genai
@@ -16,13 +13,59 @@ from google import genai
 # Load env vars
 load_dotenv()
 
-# Initialize Gemini
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+# Global State Dictionary
+state = {}
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Modern replacement for @app.on_event('startup')"""
+    # --- STARTUP LOGIC ---
+    print("🚀 Application is starting up...")
+    
+    # Initialize Gemini
+    state["gemini_client"] = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+    
+    # Device setup
+    state["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
+    repo_id = "noor9292/mental-health-distilbert"
+    try:
+        # 1. Load Model & Tokenizer
+        state["tokenizer"] = DistilBertTokenizer.from_pretrained(repo_id)
+        state["model"] = DistilBertForSequenceClassification.from_pretrained(repo_id)
+        state["model"].to(state["device"])
+        state["model"].eval()
+        print("✅ DistilBERT Model and Tokenizer loaded.")
+
+        # 2. Load Label Encoder
+        from huggingface_hub import hf_hub_download
+        try:
+            path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib")
+            state["label_encoder"] = joblib.load(path)
+            print("✅ Label Encoder loaded from Hub.")
+        except Exception as e:
+            print(f"⚠️ Warning: Using fallback label classes ({e}).")
+            from sklearn.preprocessing import LabelEncoder
+            le = LabelEncoder()
+            le.classes_ = np.array(['non-suicide', 'suicide'])
+            state["label_encoder"] = le
+
+        print("✅ Startup sequence finished successfully!")
+    except Exception as e:
+        print(f"❌ CRITICAL STARTUP ERROR: {str(e)}")
+        raise e
+
+    yield  # The app stays here while running requests
+
+    # --- SHUTDOWN LOGIC ---
+    print("🛑 Application is shutting down...")
+    state.clear()
 
 app = FastAPI(
     title="Mental Health Risk Detection API",
     description="Fine-tuned DistilBERT + Gemini 2.5 Flash Lite",
-    version="4.0.0"
+    version="4.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -33,54 +76,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global Variables
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = None
-tokenizer = None
-label_encoder = None
-
-
-@app.on_event("startup")
-def load_artifacts():
-    global model, tokenizer, label_encoder
-    
-    repo_id = "noor9292/mental-health-distilbert"
-    print(f"🚀 Loading DistilBERT from: {repo_id}...")
-
-    try:
-        # 1. Load Model & Tokenizer
-        tokenizer = DistilBertTokenizer.from_pretrained(repo_id)
-        model = DistilBertForSequenceClassification.from_pretrained(repo_id)
-        model.to(device)
-        model.eval()
-
-        # 2. Load Label Encoder (The part that caused the error)
-        try:
-            from huggingface_hub import hf_hub_download
-            # IMPORTANT: Ensure "label_encoder_bert.joblib" is the EXACT name on HF
-            label_file_path = hf_hub_download(repo_id=repo_id, filename="label_encoder_bert.joblib")
-            
-            if label_file_path:
-                label_encoder = joblib.load(label_file_path)
-                print("✅ Label Encoder loaded!")
-            else:
-                raise FileNotFoundError("hf_hub_download returned None")
-                
-        except Exception as e:
-            print(f"⚠️ Warning: Could not load label encoder ({e}). Using manual mapping.")
-            # Manual fallback so the app doesn't crash
-            label_encoder = None 
-
-        print("✅ Startup Complete!")
-    except Exception as e:
-        print(f"❌ CRITICAL ERROR: {e}")
-        raise e
-
-
 @app.get("/")
 def health_check():
     return {"status": "ok", "model": "DistilBERT (PyTorch)"}
-
 
 def generate_empathetic_explanation(user_text, risk_label):
     prompt = f"""
@@ -95,7 +93,7 @@ def generate_empathetic_explanation(user_text, risk_label):
     Max 4 sentences.
     """
     try:
-        # UPDATED: Using gemini-2.5-flash-lite
+        client = state["gemini_client"]
         response = client.models.generate_content(
             model="gemini-2.5-flash-lite",
             contents=prompt
@@ -103,13 +101,15 @@ def generate_empathetic_explanation(user_text, risk_label):
         return response.text.replace("**", "").strip()
     except Exception as e:
         print(f"Gemini Error: {e}")
-        fallback = ("I hear you, and I'm here for you. Please consider "
-                    "reaching out to a professional for support.")
-        return fallback
-
+        return "I hear you, and I'm here for you. Please reach out to a professional for support."
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
+    tokenizer = state["tokenizer"]
+    model = state["model"]
+    device = state["device"]
+    label_encoder = state["label_encoder"]
+
     # 1. Preprocess & Tokenize
     inputs = tokenizer(
         request.text,
@@ -124,11 +124,10 @@ def predict(request: PredictionRequest):
     with torch.no_grad():
         outputs = model(**inputs)
         logits = outputs.logits
-        # Convert logits to probabilities (Softmax)
         probs = torch.nn.functional.softmax(logits, dim=-1).cpu().numpy()[0]
 
     # 3. Label Mapping
-    class_names = label_encoder.classes_  # ['High', 'Low', 'Moderate']
+    class_names = label_encoder.classes_
     max_idx = np.argmax(probs)
     final_label = class_names[max_idx]
     confidence = probs[max_idx]
