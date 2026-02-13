@@ -99,13 +99,28 @@ Gemini generates compassionate, supportive explanations.
 
 ------------------------------------------------------------------------
 
-# 📂 Project Structure
+## 📂 Project Structure
 
-microsoft-azure-internship-project/ │ ├── artifacts/ ├── data/ ├── src/
-│ ├── api/ │ │ ├── main.py │ │ └── schemas.py │ └── inference/ │ └──
-symptom_model.py ├── ui/ ├── train_distilbert.py ├──
-train_symptom_model.py ├── tune_thresholds.py ├── requirements.txt ├──
-Dockerfile └── README.md
+```
+microsoft-azure-internship-project/
+│
+├── artifacts/
+├── data/
+├── src/
+│   ├── api/
+│   │   ├── main.py
+│   │   └── schemas.py
+│   ├── inference/
+│   │   └── symptom_model.py
+├── ui/
+├── train_distilbert.py
+├── train_symptom_model.py
+├── tune_thresholds.py
+├── requirements.txt
+├── Dockerfile
+└── README.md
+```
+
 
 ------------------------------------------------------------------------
 
