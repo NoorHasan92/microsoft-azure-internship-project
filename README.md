@@ -31,6 +31,19 @@ help prioritize potentially high-risk content for timely attention.
 
 ------------------------------------------------------------------------
 
+## 📚 Datasets Used
+
+1. Mental Health Sentiment Dataset  
+   https://www.kaggle.com/datasets/suchintikasarkar/sentiment-analysis-for-mental-health  
+
+2. Suicide Detection Dataset  
+   https://www.kaggle.com/datasets/nikhileswarkomati/suicide-watch  
+
+3. Reddit-Based Multi-Label Emotion Dataset  
+   https://github.com/abuBakarSiddiqurRahman/DepressionEmo/blob/main/Dataset/test.json
+
+------------------------------------------------------------------------
+
 # 🛠️ System Architecture
 
 ## 1️⃣ Text Input
