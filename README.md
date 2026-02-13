@@ -164,8 +164,8 @@ microsoft-azure-internship-project/
 
 # 👤 Author
 
-Md Noor Hasan Ansari
-B.Tech CSE Student
+Md Noor Hasan Ansari\
+B.Tech CSE Student\
 Microsoft Azure Internship Project
 
 ------------------------------------------------------------------------
