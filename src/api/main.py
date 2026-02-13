@@ -1,13 +1,18 @@
-import os
-import requests
-from contextlib import asynccontextmanager
+#src/api/main.py
 
-from fastapi import FastAPI
+import os
+from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from google import genai
-
+from src.inference.symptom_model import SymptomModel
 from src.api.schemas import PredictionRequest, PredictionResponse
+from transformers import AutoTokenizer, AutoModelForSequenceClassification
+import torch
+import torch.nn.functional as F
+
 
 # --------------------------------------------------
 # Environment & global state
@@ -17,17 +22,33 @@ load_dotenv()
 
 state = {}
 
-HF_MODEL_URL = "https://router.huggingface.co/models/noor9292/mental-health-distilbert"
+# --------------------------------------------------
+# Load Risk Model (Manual Inference)
+# --------------------------------------------------
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+risk_tokenizer = AutoTokenizer.from_pretrained("artifacts/risk_model_v1")
+risk_model = AutoModelForSequenceClassification.from_pretrained("artifacts/risk_model_v1")
+
+risk_model.to(device)
+risk_model.eval()
+
 
 # --------------------------------------------------
-# Lifespan (startup / shutdown)
+# Load Symptom Model
+# --------------------------------------------------
+
+symptom_model = SymptomModel()
+
+# --------------------------------------------------
+# Lifespan
 # --------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Application starting (HF Inference API mode)")
+    print("🚀 Application starting (LOCAL model inference mode)")
 
-    # Gemini (optional)
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
@@ -43,17 +64,24 @@ async def lifespan(app: FastAPI):
     yield
     state.clear()
 
-
 # --------------------------------------------------
 # FastAPI app
 # --------------------------------------------------
 
 app = FastAPI(
     title="Mental Health Risk Detection API",
-    description="DistilBERT via Hugging Face Inference API + Gemini explanations",
-    version="5.0.0",
+    description="DistilBERT (Local Inference) + Gemini explanations",
+    version="6.0.0",
     lifespan=lifespan,
 )
+
+app.mount("/static", StaticFiles(directory="ui"), name="static")
+from fastapi.responses import FileResponse
+
+@app.get("/")
+def serve_ui():
+    return FileResponse("ui/index.html")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,12 +95,9 @@ app.add_middleware(
 # Health check
 # --------------------------------------------------
 
-@app.get("/")
+@app.get("/health")
 def health_check():
-    return {
-        "status": "ok",
-        "mode": "hf-inference-api"
-    }
+    return {"status": "ok", "mode": "local-model-inference"}
 
 # --------------------------------------------------
 # Gemini explanation helper
@@ -112,45 +137,113 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
         return fallback
 
 # --------------------------------------------------
-# Prediction endpoint (HF Inference API)
+# Prediction endpoint (LOCAL MODEL)
 # --------------------------------------------------
 
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
-    hf_token = os.getenv("HF_API_TOKEN")
-    if not hf_token:
-        raise RuntimeError("HF_API_TOKEN not set")
 
-    headers = {
-        "Authorization": f"Bearer {hf_token}",
-        "Content-Type": "application/json",
+    # ---------------------------
+    # Risk Model Inference (Manual)
+    # ---------------------------
+    try:
+        inputs = risk_tokenizer(
+            request.text,
+            return_tensors="pt",
+            truncation=True,
+            padding=True,
+            max_length=128
+        ).to(device)
+
+        with torch.no_grad():
+            outputs = risk_model(**inputs)
+            logits = outputs.logits
+            probs = torch.softmax(logits, dim=1)
+
+        probabilities = probs.cpu().numpy()[0]
+
+        predicted_class_id = int(torch.argmax(probs, dim=1))
+        confidence = float(probabilities[predicted_class_id])
+
+        final_label = risk_model.config.id2label[predicted_class_id]
+
+        print("RISK PROBS:", probabilities)
+        print("Predicted:", final_label, confidence)
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Risk model inference failed: {e}"
+        )
+
+    # ------------------------------------------
+    # Symptom Profiling
+    # ------------------------------------------
+
+    if final_label == "Low" and confidence > 0.65:
+        symptom_results = {
+            "detected": [],
+            "probabilities": {}
     }
+    else:
+        symptom_results = symptom_model.predict(request.text)
 
-    payload = {
-        "inputs": request.text
-    }
+    detected_symptoms = []
+    for label in symptom_results["detected"]:
+        detected_symptoms.append({
+            "label": label,
+            "confidence": round(symptom_results["probabilities"][label], 4)
+        })
 
-    response = requests.post(
-        HF_MODEL_URL,
-        headers=headers,
-        json=payload,
-        timeout=30,
+
+    # ------------------------------------------
+    # Symptom Severity Estimation
+    # ------------------------------------------
+
+    symptom_count = len(detected_symptoms)
+
+    if symptom_count >= 5:
+        symptom_severity = "Severe Distress"
+    elif symptom_count >= 3:
+        symptom_severity = "Moderate Distress"
+    elif symptom_count >= 1:
+        symptom_severity = "Mild Distress"
+    else:
+        symptom_severity = "No Significant Distress"
+
+    # ------------------------------------------
+    # Pattern Classification (Non-Diagnostic)
+    # ------------------------------------------
+
+    # Extract just labels for pattern logic
+    detected_labels = [item["label"] for item in detected_symptoms]
+    # ------------------------------------------
+    # Strong Suicide Phrase Override
+    # ------------------------------------------
+
+    high_intent_phrases = [
+        "kill myself",
+        "end my life",
+        "suicide tonight",
+        "want to die tonight",
+        "no reason to live",
+        "i am going to kill myself",
+        "i will kill myself"
+    ]
+    text_lower = request.text.lower()
+    strong_phrase_detected = any(
+        phrase in text_lower for phrase in high_intent_phrases
     )
 
-    if response.status_code != 200:
-        raise RuntimeError(f"Hugging Face API error: {response.text}")
+    if "suicide intent" in detected_labels:
+        pattern = "Crisis-Level Pattern"
+    elif "hopelessness" in detected_labels and "sadness" in detected_labels:
+        pattern = "Depressive Pattern"
+    elif "anger" in detected_labels:
+        pattern = "Emotional Regulation Pattern"
+    else:
+        pattern = "General Emotional Distress Pattern"
 
-    result = response.json()
-    # Expected format:
-    # [
-    #   {"label": "High", "score": 0.93},
-    #   {"label": "Moderate", "score": 0.05},
-    #   {"label": "Low", "score": 0.02}
-    # ]
-
-    top = max(result, key=lambda x: x["score"])
-    final_label = top["label"]
-    confidence = float(top["score"])
 
     if final_label == "High":
         score = 70 + (confidence * 30)
@@ -166,9 +259,66 @@ def predict(request: PredictionRequest):
         request.text, final_label
     )
 
+    # ------------------------------------------
+    # Suicide Escalation Logic
+    # ------------------------------------------
+
+    suicide_prob = symptom_results["probabilities"].get("suicide intent", 0)
+
+    if strong_phrase_detected:
+        final_label = "High"
+        priority = "Critical"
+
+    elif suicide_prob >= 0.75:
+        final_label = "High"
+        priority = "Critical"
+
+    elif 0.55 <= suicide_prob < 0.75 and final_label != "High":
+        priority = "Medium"
+
+
+    # ------------------------------------------
+    # System Confidence Level
+    # ------------------------------------------
+
+    if confidence >= 0.80:
+        system_confidence = "High"
+    elif confidence >= 0.60:
+        system_confidence = "Moderate"
+    else:
+        system_confidence = "Low"
+
+    # ------------------------------------------
+    # Crisis Auto-Trigger
+    # ------------------------------------------
+
+    emergency_support = None
+
+    if priority == "Critical":
+        emergency_support = {
+            "india_helpline": "9152987821 (Kiran Mental Health Helpline)",
+            "us_helpline": "988 (Suicide & Crisis Lifeline)",
+            "message": "If you are in immediate danger, please contact local emergency services."
+        }
+
+    disclaimer = (
+        "This system provides AI-assisted screening and is not a medical diagnosis. "
+        "If you are experiencing distress, consider speaking with a qualified professional."
+    )
+
+
     return {
         "risk_label": final_label,
         "risk_score": round(score, 2),
         "priority": priority,
+        "system_confidence": system_confidence,
+        "detected_symptoms": detected_symptoms,
+        "symptom_severity": symptom_severity,
+        "psychological_pattern": pattern,
         "explanation": explanation,
+        "disclaimer": disclaimer,
+        "emergency_support": emergency_support,
     }
+
+
+
