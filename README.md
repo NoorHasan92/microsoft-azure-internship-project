@@ -12,7 +12,7 @@ distress risk from textual input.
 The system leverages:
 
 -   🧠 DistilBERT (Transformer-based NLP models)
--   🤖 Google Gemini 2.5 Flash Lite for empathetic explanation
+-   🤖 Google Gemini 2.5 Flash for empathetic explanation
 -   🛡️ Multi-layer crisis escalation logic
 -   📊 Risk scoring & prioritization engine
 
