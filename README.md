@@ -104,8 +104,14 @@ Gemini generates compassionate, supportive explanations.
 ```
 microsoft-azure-internship-project/
 │
-├── artifacts/
+├── artifacts/ (Trained Model)
 ├── data/
+|   ├── processed
+|   └── raw
+|       ├── mental_health.csv
+|       ├── Suicide_Detection.csv
+|       └── symptom_dataset.json
+|
 ├── notebooks
 |   └──01_data_exploration.ipynb
 |
