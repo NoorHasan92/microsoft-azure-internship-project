@@ -1,100 +1,131 @@
----
-title: Mental Health Api
-sdk: docker
-emoji: 🧠
-colorFrom: blue
-colorTo: green
----
+# 🧠 AI-Based Mental Health Risk Detection System
 
-🧠 AI-Based Mental Health Risk Detection System
 Microsoft Azure Internship Project
-📌 Project Overview
-This project implements an AI-driven mental health risk detection system that analyzes textual data to identify early indicators of risks such as stress, anxiety, and depression.
 
-By leveraging Transformer-based Deep Learning (DistilBERT) and Generative AI (Gemini 2.5), the system functions as a high-precision decision-support tool to prioritize individuals who may require timely attention.
+------------------------------------------------------------------------
 
------------------------------------------------------------------------------------------------------------
+## 📌 Project Overview
 
-🎯 Key Objectives
-    -> High-Precision Detection: Identify mental health risk levels with Transformer-based accuracy.
-    -> Explainable AI (XAI): Provide empathetic, natural-language justifications for every risk flag.
-    -> Privacy by Design: Focus on anonymized, authorized text processing.
-    -> Urgency Prioritization: Map model confidence to actionable priority levels.
+This project implements a multi-stage AI system for detecting emotional
+distress risk from textual input.
 
------------------------------------------------------------------------------------------------------------
+The system leverages:
 
-🧩 Problem Statement
-Mental health challenges often go unnoticed due to stigma and limited care access. However, digital text—such as journal entries or messages—often contains early warning signs. This project bridges the gap by providing a scalable, transparent way to flag high-risk content for human review.
+-   🧠 DistilBERT (Transformer-based NLP models)
+-   🤖 Google Gemini 2.5 Flash Lite for empathetic explanation
+-   🛡️ Multi-layer crisis escalation logic
+-   📊 Risk scoring & prioritization engine
 
------------------------------------------------------------------------------------------------------------
+It is designed as a decision-support system, not a diagnostic tool, to
+help prioritize potentially high-risk content for timely attention.
 
-🛠️ System Architecture
+------------------------------------------------------------------------
 
-The pipeline utilizes a hybrid approach combining Natural Language Understanding (NLU) and Generative AI:
-    1. Text Input: User-provided text (e.g., "I feel overwhelmed...").
-    2.Inference (DistilBERT): A fine-tuned DistilBERT model classifies the text into Low, Moderate, or High risk.
-    3.Risk Scoring: Softmax probabilities are mapped to a 0–100 scale for granular prioritization.
-    4. Explainability (Gemini 2.5 Flash Lite): The model's prediction is passed to Gemini to generate a compassionate, context-aware explanation.
-    5.Output: A structured JSON response containing the label, score, priority, and AI explanation.
+# 🎯 Key Objectives
 
------------------------------------------------------------------------------------------------------------
+-   High-Precision Risk Detection (Low / Moderate / High)\
+-   Multi-Label Emotional Profiling\
+-   Crisis Escalation & Safety Overrides\
+-   Explainable AI (Natural-language justifications)\
+-   Privacy-First Architecture
 
-🤖 Machine Learning Approach
-    -> Primary Model: DistilBERT (Fine-tuned for sequence classification).
-    -> Explainability Engine: Google Gemini 2.5 Flash Lite.
-    -> Optimization: Mixed-precision training (fp16) for efficient GPU utilization (NVIDIA RTX 3050).
+------------------------------------------------------------------------
 
-📊 Model Performance:
+# 🛠️ System Architecture
 
-Metric                        Value
-Model               TypeDistilBERT (Transformer)
-Training Epochs                 2
-Training Precision         FP16 (Mixed)
-Build Status        ✅ Passed (Flake8 Clean)
+## 1️⃣ Text Input
 
------------------------------------------------------------------------------------------------------------
+User provides free-form text.
 
-🚦 Risk Scoring & Prioritization:
-The system maps model confidence to urgency levels to assist triage.
+## 2️⃣ Risk Classification (DistilBERT -- 3 Class)
 
-Risk Score	        Priority	        Action Level
-85–100	            Critical	    Immediate intervention
-70–84	              High	            Priority review
-40–69	             Medium	          Routine monitoring
-<40	                  Low	           General awareness
+Predicts Low, Moderate, or High risk using softmax probabilities.
 
------------------------------------------------------------------------------------------------------------
+## 3️⃣ Multi-Label Symptom Detection
 
-🔍 Explainability & Ethics
-    -> Generative Explanations: Unlike "Black Box" models, our system uses Gemini 2.5 Flash Lite to explain why a certain risk was detected, helping human reviewers understand the user's emotional context.
-    -> Non-Diagnostic: This tool is an Early Warning System, not a medical diagnosis.
-    -> Safety First: High-confidence crisis triggers automatically escalate the priority to "Critical."
+Detects emotional indicators such as hopelessness, sadness, suicide
+intent, anger, loneliness, worthlessness, emptiness, and cognitive
+dysfunction.
 
------------------------------------------------------------------------------------------------------------
+## 4️⃣ Suicide Escalation Logic
 
-📂 Project Structure
-microsoft-azure-internship-project/
-│
-├── artifacts/             # Trained DistilBERT model & label encoders
-├── data/                  # Datasets (Raw & Processed)
-├── src/
-│   └── api/
-│       ├── main.py        # FastAPI Production Server
-│       └── schemas.py     # Pydantic data models
-├── ui/                    # Frontend (HTML/JS/CSS)
-├── requirements.txt       # Optimized production dependencies
-├── train_distilbert.py    # Model training & fine-tuning script
-└── README.md              # Project documentation
+Includes strong phrase overrides and probability-based crisis
+escalation.
 
------------------------------------------------------------------------------------------------------------
+## 5️⃣ Risk Scoring Engine
 
-🚀 Quick Start
-    1. Install Dependencies: pip install -r requirements.txt
-    2. Setup Environment: Create a .env file and add your GEMINI_API_KEY.
-    3. Run Production Server: uvicorn src.api.main:app --workers 4
+  Risk Label   Score Formula
+  ------------ ------------------------
+  High         70 + (confidence × 30)
+  Moderate     40 + (confidence × 29)
+  Low          confidence × 39
 
------------------------------------------------------------------------------------------------------------
+## 6️⃣ Explainability Layer
 
-👤 Author Mahi - B.Tech CSE Student Microsoft Azure Internship Project
+Gemini generates compassionate, supportive explanations.
 
-Disclaimer: This project is for educational purposes and is not a substitute for professional clinical help.
+------------------------------------------------------------------------
+
+# 📊 Model Overview
+
+-   Primary Model: DistilBERT (Fine-tuned, 3-class classification)
+-   Symptom Model: DistilBERT (Multi-label classification)
+-   Optimization: Mixed Precision (FP16)
+-   Hardware Used: NVIDIA RTX 3050
+
+------------------------------------------------------------------------
+
+# 🚦 Risk Prioritization
+
+  Risk Score   Priority   Action Level
+  ------------ ---------- ---------------------
+  85--100      Critical   Immediate attention
+  70--84       High       Priority review
+  40--69       Medium     Routine monitoring
+  \<40         Low        General awareness
+
+------------------------------------------------------------------------
+
+# 📂 Project Structure
+
+microsoft-azure-internship-project/ │ ├── artifacts/ ├── data/ ├── src/
+│ ├── api/ │ │ ├── main.py │ │ └── schemas.py │ └── inference/ │ └──
+symptom_model.py ├── ui/ ├── train_distilbert.py ├──
+train_symptom_model.py ├── tune_thresholds.py ├── requirements.txt ├──
+Dockerfile └── README.md
+
+------------------------------------------------------------------------
+
+# 🚀 Quick Start
+
+1.  Install Dependencies\
+    pip install -r requirements.txt
+
+2.  Create a .env file\
+    GEMINI_API_KEY=your_key_here
+
+3.  Run Server\
+    uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+
+------------------------------------------------------------------------
+
+# 🔍 Ethical Considerations
+
+-   Not a medical diagnosis tool\
+-   Designed for early warning & triage\
+-   Encourages professional consultation when needed
+
+------------------------------------------------------------------------
+
+# 👤 Author
+
+Mahi\
+B.Tech CSE Student\
+Microsoft Azure Internship Project
+
+------------------------------------------------------------------------
+
+# 📌 Disclaimer
+
+This project is for educational and research purposes only.\
+It is not a substitute for licensed mental health professionals.
