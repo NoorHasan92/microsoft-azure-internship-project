@@ -110,13 +110,13 @@ microsoft-azure-internship-project/
 │   ├── api/
 │   │   ├── main.py
 │   │   └── schemas.py
-│   ├── inference/
+│   └── inference/
 │       ├── symptom_model.py
 |       └── model_loader.py
 ├── ui/
 |   ├── index.html
 |   ├── script.js
-|   ├── style.css
+|   └── style.css
 |
 ├── train_distilbert.py
 ├── train_symptom_model.py
