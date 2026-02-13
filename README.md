@@ -23,10 +23,10 @@ help prioritize potentially high-risk content for timely attention.
 
 # 🎯 Key Objectives
 
--   High-Precision Risk Detection (Low / Moderate / High)\
--   Multi-Label Emotional Profiling\
--   Crisis Escalation & Safety Overrides\
--   Explainable AI (Natural-language justifications)\
+-   High-Precision Risk Detection (Low / Moderate / High)
+-   Multi-Label Emotional Profiling
+-   Crisis Escalation & Safety Overrides
+-   Explainable AI (Natural-language justifications)
 -   Privacy-First Architecture
 
 ------------------------------------------------------------------------
@@ -156,16 +156,16 @@ microsoft-azure-internship-project/
 
 # 🔍 Ethical Considerations
 
--   Not a medical diagnosis tool\
--   Designed for early warning & triage\
+-   Not a medical diagnosis tool
+-   Designed for early warning & triage
 -   Encourages professional consultation when needed
 
 ------------------------------------------------------------------------
 
 # 👤 Author
 
-Md Noor Hasan Ansari\
-B.Tech CSE Student\
+Md Noor Hasan Ansari
+B.Tech CSE Student
 Microsoft Azure Internship Project
 
 ------------------------------------------------------------------------
