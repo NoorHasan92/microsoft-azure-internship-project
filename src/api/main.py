@@ -128,7 +128,7 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-2.5-flash",
             contents=prompt
         )
         return response.text.replace("**", "").strip()
