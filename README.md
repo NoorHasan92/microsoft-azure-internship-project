@@ -106,13 +106,13 @@ microsoft-azure-internship-project/
 │
 ├── artifacts/ (Trained Model)
 ├── data/
-|   ├── processed
-|   └── raw
+|   ├── processed/
+|   └── raw/
 |       ├── mental_health.csv
 |       ├── Suicide_Detection.csv
 |       └── symptom_dataset.json
 |
-├── notebooks
+├── notebooks/
 |   └──01_data_exploration.ipynb
 |
 ├── src/
