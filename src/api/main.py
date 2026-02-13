@@ -47,18 +47,18 @@ symptom_model = SymptomModel()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("🚀 Application starting (LOCAL model inference mode)")
+    print("Application starting (LOCAL model inference mode)")
 
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
             state["gemini_client"] = genai.Client(api_key=gemini_key)
-            print("✅ Gemini client initialized")
+            print("Gemini client initialized")
         except Exception as e:
             print(f"⚠️ Gemini init failed: {e}")
             state["gemini_client"] = None
     else:
-        print("ℹ️ GEMINI_API_KEY not found, using fallback responses")
+        print("GEMINI_API_KEY not found, using fallback responses")
         state["gemini_client"] = None
 
     yield

@@ -12,10 +12,10 @@ from transformers import DistilBertTokenizer, DistilBertForSequenceClassificatio
 
 # 1. Setup Device (Uses your RTX 3050)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"🚀 Using Hardware: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
+print(f"Using Hardware: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
 
 # 2. Load & Prepare Data
-print("📂 Loading Data...")
+print("Loading Data...")
 # Ensure these paths match where your CSVs are!
 df_old = pd.read_csv('data/raw/mental_health.csv')
 df_new = pd.read_csv('data/raw/Suicide_Detection.csv')
@@ -49,10 +49,10 @@ balanced_df = pd.concat([df_low, df_mod, df_high]).sample(frac=1, random_state=4
 le = LabelEncoder()
 balanced_df['label'] = le.fit_transform(balanced_df['risk_label'])
 label_map = dict(zip(le.transform(le.classes_), le.classes_))
-print(f"✅ Data Loaded: {len(balanced_df)} rows. Labels: {label_map}")
+print(f"Data Loaded: {len(balanced_df)} rows. Labels: {label_map}")
 
 # 3. Tokenization (The BERT way)
-print("🔠 Tokenizing...")
+print("Tokenizing...")
 model_name = "distilbert-base-uncased"
 tokenizer = DistilBertTokenizer.from_pretrained(model_name)
 
@@ -74,7 +74,7 @@ test_dataset = train_test['test']
 clean_id2label = {int(k): str(v) for k, v in label_map.items()}
 clean_label2id = {str(v): int(k) for k, v in label_map.items()}
 
-print(f"✅ Cleaned Mapping for Config: {clean_id2label}")
+print(f"Cleaned Mapping for Config: {clean_id2label}")
 
 model = DistilBertForSequenceClassification.from_pretrained(
     model_name, 
@@ -109,7 +109,7 @@ trainer = Trainer(
 )
 
 # 7. Train!
-print("🚀 Starting Training (DistilBERT)... This might take 30-45 mins.")
+print("Starting Training (DistilBERT)... This might take 30-45 mins.")
 trainer.train()
 
 # 8. Save
@@ -124,4 +124,4 @@ tokenizer.save_pretrained(save_path)
 import joblib
 joblib.dump(le, os.path.join(save_path, "label_encoder_bert.joblib"))
 
-print(f"💾 Model saved to {save_path}")
+print(f"Model saved to {save_path}")
