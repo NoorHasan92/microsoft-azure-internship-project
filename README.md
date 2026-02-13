@@ -106,6 +106,9 @@ microsoft-azure-internship-project/
 │
 ├── artifacts/
 ├── data/
+├── notebooks
+|   └──01_data_exploration.ipynb
+|
 ├── src/
 │   ├── api/
 │   │   ├── main.py
@@ -113,11 +116,15 @@ microsoft-azure-internship-project/
 │   └── inference/
 │       ├── symptom_model.py
 |       └── model_loader.py
+|
 ├── ui/
 |   ├── index.html
 |   ├── script.js
 |   └── style.css
 |
+├── venv (Virtual Environment)
+├── .env (Environment Variables, like API Keys, etc)
+├── .gitignore
 ├── train_distilbert.py
 ├── train_symptom_model.py
 ├── tune_thresholds.py
