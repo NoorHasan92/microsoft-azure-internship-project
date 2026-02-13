@@ -132,7 +132,7 @@ Dockerfile └── README.md
 
 # 👤 Author
 
-Mahi\
+Md Noor Hasan Ansari\
 B.Tech CSE Student\
 Microsoft Azure Internship Project
 
