@@ -52,14 +52,17 @@ async def lifespan(app: FastAPI):
     gemini_key = os.getenv("GEMINI_API_KEY")
     if gemini_key:
         try:
-            state["gemini_client"] = genai.Client(api_key=gemini_key)
-            print("Gemini client initialized")
+            genai.configure(api_key=gemini_key)
+            state["gemini_model"] = genai.GenerativeModel("gemini-1.5-flash")
+            print("Gemini model initialized")
         except Exception as e:
             print(f"⚠️ Gemini init failed: {e}")
-            state["gemini_client"] = None
+            state["gemini_model"] = None
+
+
     else:
         print("GEMINI_API_KEY not found, using fallback responses")
-        state["gemini_client"] = None
+        state["gemini_model"] = None
 
     yield
     state.clear()
@@ -104,14 +107,14 @@ def health_check():
 # --------------------------------------------------
 
 def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
-    client = state.get("gemini_client")
+    model = state.get("gemini_model")
 
     fallback = (
         "I hear you. You're not alone, and reaching out is a strong first step. "
         "If things feel overwhelming, consider talking to someone you trust or a professional."
     )
 
-    if not client:
+    if not model:
         return fallback
 
     prompt = f"""
@@ -127,11 +130,9 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
     """
 
     try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
+        response = model.generate_content(prompt)
         return response.text.replace("**", "").strip()
+
     except Exception as e:
         print(f"⚠️ Gemini error: {e}")
         return fallback
