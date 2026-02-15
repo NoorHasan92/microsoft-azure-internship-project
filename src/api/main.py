@@ -12,6 +12,33 @@ from src.api.schemas import PredictionRequest, PredictionResponse
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 import torch.nn.functional as F
+import logging
+from logging.handlers import RotatingFileHandler
+
+import logging
+from logging.handlers import RotatingFileHandler
+
+#-----------------------------------
+#       Logging Setup
+#-----------------------------------
+# Create logs directory if not exists
+os.makedirs("logs", exist_ok=True)
+
+logger = logging.getLogger("predict_logger")
+logger.setLevel(logging.INFO)
+
+handler = RotatingFileHandler(
+    "logs/predict.log",
+    maxBytes=5 * 1024 * 1024,  # 5MB
+    backupCount=3
+)
+
+formatter = logging.Formatter(
+    "%(asctime)s | PID:%(process)d | %(levelname)s | %(message)s"
+)
+
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 
 # --------------------------------------------------
@@ -308,6 +335,14 @@ def predict(request: PredictionRequest):
     )
 
 
+    logger.info(
+        f"TEXT: {request.text[:100]} | "
+        f"LABEL: {final_label} | "
+        f"PRIORITY: {priority} | "
+        f"CONF: {round(confidence, 4)}"
+    )
+
+
     return {
         "risk_label": final_label,
         "risk_score": round(score, 2),
@@ -320,6 +355,4 @@ def predict(request: PredictionRequest):
         "disclaimer": disclaimer,
         "emergency_support": emergency_support,
     }
-
-
 
