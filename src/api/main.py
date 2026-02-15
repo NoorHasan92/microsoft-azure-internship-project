@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-from google import genai
+import google.generativeai as genai
 from src.inference.symptom_model import SymptomModel
 from src.api.schemas import PredictionRequest, PredictionResponse
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
