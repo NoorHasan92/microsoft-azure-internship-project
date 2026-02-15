@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
     if gemini_key:
         try:
             genai.configure(api_key=gemini_key)
-            state["gemini_model"] = genai.GenerativeModel("gemini-pro")
+            state["gemini_model"] = genai.GenerativeModel("gemini-2.5-flash")
             print("Gemini model initialized")
         except Exception as e:
             print(f"⚠️ Gemini init failed: {e}")
