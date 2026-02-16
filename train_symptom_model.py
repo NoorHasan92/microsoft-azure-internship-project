@@ -39,9 +39,9 @@ def compute_metrics(eval_pred):
 def main():
     print("Starting Symptom Model Training...")
 
-    # =========================
+    #==========================
     # Load Dataset
-    # =========================
+    #==========================
 
     dataset_path = os.path.join("data", "raw", "symptom_dataset.json")
     data = load_dataset(dataset_path)
@@ -49,9 +49,9 @@ def main():
     texts = [item["text"] for item in data]
     emotion_lists = [item["emotions"] for item in data]
 
-    # =========================
+    #==========================
     # Label Processing
-    # =========================
+    #==========================
 
     unique_labels = sorted(list(set(e for sublist in emotion_lists for e in sublist)))
     label2id = {label: i for i, label in enumerate(unique_labels)}
@@ -64,9 +64,9 @@ def main():
             vector[label2id[e]] = 1
         multi_hot_labels.append(vector)
 
-    # =========================
+    #==========================
     # Train/Test Split
-    # =========================
+    #==========================
 
     X_train, X_test, y_train, y_test = train_test_split(
         texts, multi_hot_labels, test_size=0.2, random_state=42
@@ -93,9 +93,9 @@ def main():
     )
 
 
-    # =========================
+    #==========================
     # Tokenization
-    # =========================
+    #==========================
 
     tokenizer = DistilBertTokenizerFast.from_pretrained("distilbert-base-uncased")
 
@@ -122,9 +122,9 @@ def main():
 
     print("\nTokenization complete.")
 
-    # =========================
+    #==========================
     # Load Model
-    # =========================
+    #==========================
 
     model = DistilBertForSequenceClassification.from_pretrained(
         "distilbert-base-uncased",
@@ -141,9 +141,9 @@ def main():
 
     print("\nModel loaded and lower layers frozen.")
 
-    # =========================
+    #==========================
     # Training Arguments (Transformers v5 compatible)
-    # =========================
+    #==========================
 
     training_args = TrainingArguments(
         output_dir="artifacts/symptom_model",
@@ -160,9 +160,9 @@ def main():
 
     print("\nTraining arguments configured.")
 
-    # =========================
+    #==========================
     # Trainer
-    # =========================
+    #==========================
 
     trainer = Trainer(
         model=model,
@@ -172,9 +172,9 @@ def main():
         compute_metrics=compute_metrics,
     )
 
-    # =========================
+    #==========================
     # Train
-    # =========================
+    #==========================
 
     trainer.train()
     print("\nGenerating validation predictions for threshold tuning...")
@@ -191,9 +191,9 @@ def main():
     print("Validation probabilities saved.")
 
 
-    # =========================
+    #==========================
     # Save Model
-    # =========================
+    #==========================
 
     trainer.save_model("artifacts/symptom_model")
     tokenizer.save_pretrained("artifacts/symptom_model")

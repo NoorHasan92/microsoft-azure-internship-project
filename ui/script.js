@@ -18,7 +18,6 @@ function typeWriter(text, element, speed = 15) {
             typingTimeout = setTimeout(type, speed);
         }
     }
-
     type();
 }
 
@@ -37,7 +36,6 @@ async function analyzeText() {
     requestAnimationFrame(() => {
         resultBox.classList.add("show");
     });
-
 
     aiBox.style.display = "none";
     aiBox.classList.remove("show");
@@ -77,8 +75,7 @@ async function analyzeText() {
         }
 
         const data = await response.json();
-        // Show detailed section
-        const detailSection = document.getElementById("detailedAnalysis");
+        const detailSection = document.getElementById("detailedAnalysis");  // Show detailed section
         detailSection.style.display = "block";
 
         // Populate symptoms
@@ -133,7 +130,6 @@ async function analyzeText() {
         // Disclaimer
         document.getElementById("disclaimerBox").innerText = data.disclaimer;
 
-
         // Determine color class
         let colorClass = "low";
         if (data.priority === "Critical" || data.priority === "High") {
@@ -142,22 +138,22 @@ async function analyzeText() {
             colorClass = "moderate";
         }
 
-        // Update result content
+        // Updates the result content
         resultBox.className = "result " + colorClass;
         resultBox.innerHTML = `
-    <div><strong>Risk:</strong> ${data.risk_label}</div>
-    <div><strong>Priority:</strong> ${data.priority}</div>
-    <div><strong>System Confidence:</strong> ${data.system_confidence}</div>
+        <div><strong>Risk:</strong> ${data.risk_label}</div>
+        <div><strong>Priority:</strong> ${data.priority}</div>
+        <div><strong>System Confidence:</strong> ${data.system_confidence}</div>
 
-    <div class="confidence-wrapper">
-        <div class="confidence-label">
-            Risk Score: ${data.risk_score}%
+        <div class="confidence-wrapper">
+            <div class="confidence-label">
+                Risk Score: ${data.risk_score}%
+            </div>
+            <div class="confidence-bar">
+                <div class="confidence-fill" style="width: 0%"></div>
+            </div>
         </div>
-        <div class="confidence-bar">
-            <div class="confidence-fill" style="width: 0%"></div>
-        </div>
-    </div>
-`;
+    `;
 
         // Animate confidence bar
         setTimeout(() => {

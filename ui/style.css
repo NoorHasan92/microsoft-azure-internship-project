@@ -9,7 +9,6 @@ body {
   justify-content: center;
 }
 
-
 .container {
   width: 100%;
   max-width: 1200px;
@@ -35,7 +34,6 @@ body {
     border-radius: 18px;
   }
 }
-
 
 h2 {
   font-size: 28px;
@@ -144,8 +142,6 @@ button:disabled {
   transform: translateY(0);
 }
 
-
-
 .result div {
   margin: 6px 0;
 }
@@ -247,9 +243,9 @@ button:disabled {
 }
 
 
-/* ================================= */
+/*================================== */
 /* Mobile Responsive (Proper Fix)   */
-/* ================================= */
+/*================================== */
 
 @media (max-width: 768px) {
 
@@ -319,9 +315,9 @@ button:disabled {
 
 
 
-/* ============================= */
+/*============================== */
 /* Detailed Analysis Section */
-/* ============================= */
+/*============================== */
 
 .detailed-analysis {
   margin-top: 25px;
@@ -388,8 +384,6 @@ button:disabled {
   font-size: 13px;
   color: #64748b;
 }
-
-/* Confidence Bar */
 
 .confidence-wrapper {
   margin-top: 15px;

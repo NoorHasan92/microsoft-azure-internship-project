@@ -21,8 +21,8 @@ from logging.handlers import RotatingFileHandler
 #-----------------------------------
 #       Logging Setup
 #-----------------------------------
-# Create logs directory if not exists
-os.makedirs("logs", exist_ok=True)
+
+os.makedirs("logs", exist_ok=True)   # Create logs directory if not exists
 
 logger = logging.getLogger("predict_logger")
 logger.setLevel(logging.INFO)
@@ -62,11 +62,7 @@ risk_model.to(device)
 risk_model.eval()
 
 
-# --------------------------------------------------
-# Load Symptom Model
-# --------------------------------------------------
-
-symptom_model = SymptomModel()
+symptom_model = SymptomModel()    # Loads the Symptom Model
 
 # --------------------------------------------------
 # Lifespan
@@ -136,7 +132,7 @@ def health_check():
 def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
     model = state.get("gemini_model")
 
-    fallback = (
+    fallback = (  #if Gemini is not available or fails (free quota exceeded), return this generic empathetic message
         "I hear you. You're not alone, and reaching out is a strong first step. "
         "If things feel overwhelming, consider talking to someone you trust or a professional."
     )
@@ -153,7 +149,7 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
     1. Acknowledge their feelings.
     2. Offer 2 hopeful, practical steps.
     3. Close with supportive reassurance.
-    Max 4 sentences.
+    Max 4 to 6 sentences.
     """
 
     try:
@@ -171,9 +167,9 @@ def generate_empathetic_explanation(user_text: str, risk_label: str) -> str:
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest):
 
-    # ---------------------------
+    # -----------------------------
     # Risk Model Inference (Manual)
-    # ---------------------------
+    # -----------------------------
     try:
         inputs = risk_tokenizer(
             request.text,
@@ -243,8 +239,8 @@ def predict(request: PredictionRequest):
     # Pattern Classification (Non-Diagnostic)
     # ------------------------------------------
 
-    # Extract just labels for pattern logic
-    detected_labels = [item["label"] for item in detected_symptoms]
+    detected_labels = [item["label"] for item in detected_symptoms]   # Extract just labels for pattern logic
+
     # ------------------------------------------
     # Strong Suicide Phrase Override
     # ------------------------------------------

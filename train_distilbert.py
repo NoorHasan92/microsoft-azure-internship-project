@@ -10,13 +10,14 @@ from sklearn.preprocessing import LabelEncoder
 from datasets import Dataset
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification, Trainer, TrainingArguments, DataCollatorWithPadding
 
-# 1. Setup Device (Uses your RTX 3050)
+# 1. Setup Device (Uses my RTX 3050 {Gaming Laptop's Perks :) }
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using Hardware: {torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CPU'}")
 
 # 2. Load & Prepare Data
 print("Loading Data...")
-# Ensure these paths match where your CSVs are!
+
+# NOTE: The original datasets have different formats, so we need to standardize them before combining.
 df_old = pd.read_csv('data/raw/mental_health.csv')
 df_new = pd.read_csv('data/raw/Suicide_Detection.csv')
 
@@ -37,8 +38,7 @@ df_new = df_new[['text', 'risk_label']]
 # Combine & Balance
 combined_df = pd.concat([df_old, df_new], ignore_index=True).dropna()
 
-# Sampling 15k per class to fit in your 4GB VRAM comfortably
-# If this works, you can try increasing it later!
+# Sampling 15k per class to fit in my 4GB VRAM comfortably
 df_low = combined_df[combined_df['risk_label'] == 'Low'].sample(n=15000, random_state=42)
 df_high = combined_df[combined_df['risk_label'] == 'High'].sample(n=15000, random_state=42)
 df_mod = combined_df[combined_df['risk_label'] == 'Moderate'] # Take all available (~21k)
@@ -70,7 +70,6 @@ train_dataset = train_test['train']
 test_dataset = train_test['test']
 
 # 4. Load Model
-# FIX: Convert the label mapping to standard Python types (int and str) to avoid JSON errors
 clean_id2label = {int(k): str(v) for k, v in label_map.items()}
 clean_label2id = {str(v): int(k) for k, v in label_map.items()}
 
@@ -94,7 +93,7 @@ training_args = TrainingArguments(
     weight_decay=0.01,
     eval_strategy="epoch",
     save_strategy="epoch",
-    fp16=True,                      # CRITICAL: Uses Mixed Precision (Saves VRAM)
+    fp16=True,                  # Use mixed precision for faster training on RTX 3050
     logging_steps=100,
 )
 
@@ -120,7 +119,7 @@ if not os.path.exists(save_path):
 model.save_pretrained(save_path)
 tokenizer.save_pretrained(save_path)
 
-# Save the label encoder too (we need it for main.py)
+# Save the label encoder too (for main.py)
 import joblib
 joblib.dump(le, os.path.join(save_path, "label_encoder_bert.joblib"))
 
