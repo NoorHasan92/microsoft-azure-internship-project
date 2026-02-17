@@ -121,7 +121,7 @@ app.add_middleware(
 # Health check
 # --------------------------------------------------
 
-@app.get("/health", methods=["GET", "HEAD"])
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     return {"status": "ok", "mode": "local-model-inference"}
 
